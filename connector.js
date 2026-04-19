@@ -1,30 +1,32 @@
 async function runOutreachBot(maxConnections) {
   console.log("Starting Sage Outreach Bot...");
 
-  // 1. SCROLL FIX: Scroll to the bottom to force all LinkedIn lazy-loaded buttons to render
-  window.scrollTo(0, document.body.scrollHeight);
-  await new Promise((r) => setTimeout(r, 2500)); // Wait 2.5 seconds for the network to load the buttons
+  // 1. GRADUATED SCROLL FIX: Scroll down slowly to ensure LinkedIn's React framework loads all buttons
+  for (let i = 1; i <= 3; i++) {
+    window.scrollTo(0, (document.body.scrollHeight / 3) * i);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 
-  // 2. Find all buttons that contain the exact text "Connect"
+  // 2. THE ULTIMATE TARGETING FIX: Check the visual text of the buttons
+  let allButtons = document.querySelectorAll("button");
   let connectButtons = [];
-  let allSpans = document.querySelectorAll("span");
 
-  for (let span of allSpans) {
-    if (span.textContent.trim() === "Connect") {
-      let card = span.closest(".reusable-search__result-container");
-      let btn = span.closest("button");
+  allButtons.forEach((btn) => {
+    // innerText ignores all the hidden HTML, SVGs, and spans, leaving only what is visible on screen
+    let visibleText = btn.innerText ? btn.innerText.trim() : "";
 
-      // Ensure it's a valid, clickable button attached to a person's card
-      if (card && btn && !btn.disabled) {
+    // Check if the button visually says exactly "Connect"
+    if (visibleText === "Connect") {
+      let card = btn.closest(".reusable-search__result-container");
+      if (card && !btn.disabled) {
         connectButtons.push({ button: btn, card: card });
       }
     }
-  }
+  });
 
-  // If the founders have strict privacy settings and no Connect buttons exist
   if (connectButtons.length === 0) {
     alert(
-      "No 'Connect' buttons found. These executives likely have strict privacy settings (showing 'Message' or 'Follow'). Click 'Load Next Target' to move to the next company.",
+      "No 'Connect' buttons found on this page. They might be out of network or locked. Try 'Load Next Target'.",
     );
     return;
   }
@@ -35,19 +37,20 @@ async function runOutreachBot(maxConnections) {
   for (let i = 0; i < limit; i++) {
     let lead = connectButtons[i];
 
-    // 3. Extract Lead Info
+    // 3. Extract Lead Info (using innerText here too for cleaner data)
     let nameElement = lead.card.querySelector(
-      '.entity-result__title-text a span[aria-hidden="true"]',
+      '.entity-result__title-text span[aria-hidden="true"]',
     );
+    if (!nameElement)
+      nameElement = lead.card.querySelector(".entity-result__title-text a"); // Fallback
+
     let titleElement = lead.card.querySelector(
       ".entity-result__primary-subtitle",
     );
     let linkElement = lead.card.querySelector(".entity-result__title-text a");
 
-    let name = nameElement ? nameElement.textContent.trim() : "Unknown Lead";
-    let title = titleElement
-      ? titleElement.textContent.trim()
-      : "Unknown Title";
+    let name = nameElement ? nameElement.innerText.trim() : "Unknown Lead";
+    let title = titleElement ? titleElement.innerText.trim() : "Unknown Title";
     let profileUrl = linkElement ? linkElement.href.split("?")[0] : "No URL";
 
     console.log(`Targeting: ${name} | ${title}`);
@@ -58,44 +61,69 @@ async function runOutreachBot(maxConnections) {
     lead.button.click();
 
     // Wait for the LinkedIn connection modal
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 2500));
 
-    // 5. Handle the Modal
-    let modalButtons = document.querySelectorAll(".artdeco-modal button");
-    let sendBtn = Array.from(modalButtons).find(
-      (b) =>
-        b.textContent.trim() === "Send" ||
-        b.textContent.trim() === "Send without a note",
-    );
+    // 5. BULLETPROOF MODAL HANDLING
+    let modal = document.querySelector(".artdeco-modal");
+    if (modal) {
+      let modalButtons = modal.querySelectorAll("button");
+      let sendBtn = null;
 
-    if (sendBtn) {
-      sendBtn.click();
-      sentCount++;
-      console.log(`Successfully sent to ${name}`);
+      // Search for the specific Send button variants based on visible text
+      for (let b of modalButtons) {
+        let text = b.innerText ? b.innerText.trim().toLowerCase() : "";
+        if (text === "send" || text === "send without a note") {
+          sendBtn = b;
+          break;
+        }
+      }
 
-      // 6. Send data to Google Sheets
-      chrome.runtime.sendMessage({
-        action: "saveData",
-        data: {
-          type: "person",
-          name: name,
-          title: title,
-          profileUrl: profileUrl,
-          company: "Extracted from Search",
-        },
-      });
+      // Fallbacks just in case
+      if (!sendBtn)
+        sendBtn = modal.querySelector(
+          'button[aria-label="Send without a note"]',
+        );
+      if (!sendBtn)
+        sendBtn = modal.querySelector('button[aria-label="Send now"]');
 
-      // 7. ANTI-BAN PROTOCOL
-      if (i < limit - 1) {
-        let delay = Math.floor(Math.random() * (35000 - 15000 + 1) + 15000);
-        console.log(`Waiting ${Math.round(delay / 1000)} seconds...`);
-        await new Promise((r) => setTimeout(r, delay));
+      if (sendBtn) {
+        sendBtn.click();
+        sentCount++;
+        console.log(`Successfully sent to ${name}`);
+
+        // 6. Send data to Google Sheets
+        chrome.runtime.sendMessage({
+          action: "saveData",
+          data: {
+            type: "person",
+            name: name,
+            title: title,
+            profileUrl: profileUrl,
+            company: "Extracted from Search",
+          },
+        });
+
+        // Wait for modal to close fully
+        await new Promise((r) => setTimeout(r, 1500));
+
+        // 7. ANTI-BAN PROTOCOL
+        if (i < limit - 1) {
+          let delay = Math.floor(Math.random() * (35000 - 15000 + 1) + 15000);
+          console.log(`Waiting ${Math.round(delay / 1000)} seconds...`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      } else {
+        console.warn(
+          `Could not find 'Send' button for ${name}. Closing modal.`,
+        );
+        let closeBtn = modal.querySelector('button[aria-label="Dismiss"]');
+        if (!closeBtn)
+          closeBtn = modal.querySelector(".artdeco-modal__dismiss");
+        if (closeBtn) closeBtn.click();
+        await new Promise((r) => setTimeout(r, 1500));
       }
     } else {
-      console.warn(`Could not find 'Send' button for ${name}. Closing modal.`);
-      let closeBtn = document.querySelector(".artdeco-modal__dismiss");
-      if (closeBtn) closeBtn.click();
-      await new Promise((r) => setTimeout(r, 1500));
+      console.warn(`Modal never opened for ${name}.`);
     }
   }
 
@@ -104,6 +132,5 @@ async function runOutreachBot(maxConnections) {
   );
 }
 
-// Fixed line to prevent variable redeclaration errors
-const maxToConnect = window.SAGE_MAX_CONNECTIONS || 5;
-runOutreachBot(maxToConnect);
+// Ensure the variable passes cleanly on multiple clicks
+runOutreachBot(window.SAGE_MAX_CONNECTIONS || 5);
