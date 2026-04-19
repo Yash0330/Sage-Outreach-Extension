@@ -18,13 +18,24 @@ async function scrapePaginatedCompanies(maxPages) {
       let cleanUrl = link.href.split("?")[0];
       let companyName = link.innerText.trim().split("\n")[0];
 
+      // THE FIX: Identify and filter out LinkedIn's social proof junk text
+      const isJunkText =
+        /connections?|follows? this page|followers?|not applicable/i.test(
+          companyName,
+        );
+
       if (
         companyName &&
+        !isJunkText &&
         companyName.toLowerCase() !== "follow" &&
         !cleanUrl.includes("/life") &&
         !cleanUrl.includes("/about")
       ) {
-        companies.set(cleanUrl, companyName);
+        // THE FIX: Only save the name if we haven't already saved one for this URL.
+        // The real company name always comes first in the DOM, so this locks it in and prevents overwriting.
+        if (!companies.has(cleanUrl)) {
+          companies.set(cleanUrl, companyName);
+        }
       }
     });
 
@@ -46,13 +57,12 @@ async function scrapePaginatedCompanies(maxPages) {
       break;
     }
 
-    // 6. THE FIX: Search the DOM for the exact text "Next" instead of relying on obfuscated CSS classes
+    // 6. Search the DOM for the exact text "Next"
     let nextBtn = null;
     let allSpans = document.querySelectorAll("span");
 
     for (let span of allSpans) {
       if (span.textContent.trim() === "Next") {
-        // LinkedIn usually wraps the span in a button. Find the parent button, or default to the span.
         nextBtn = span.closest("button") || span;
         break;
       }
@@ -79,5 +89,5 @@ async function scrapePaginatedCompanies(maxPages) {
   );
 }
 
-// Read the limit passed from popup.js, fallback to 1 if it fails
+// Fixed line to prevent variable redeclaration errors
 scrapePaginatedCompanies(window.SAGE_PAGES_TO_SCRAPE || 1);
