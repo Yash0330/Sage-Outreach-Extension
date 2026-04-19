@@ -80,5 +80,4 @@ async function scrapePaginatedCompanies(maxPages) {
 }
 
 // Read the limit passed from popup.js, fallback to 1 if it fails
-const pagesToScrape = window.SAGE_PAGES_TO_SCRAPE || 1;
-scrapePaginatedCompanies(pagesToScrape);
+scrapePaginatedCompanies(window.SAGE_PAGES_TO_SCRAPE || 1);
