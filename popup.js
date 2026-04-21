@@ -102,3 +102,20 @@ document
       document.getElementById("status").style.color = "red";
     }
   });
+
+// Phase 4: Sync Accepted Connections
+document.getElementById("syncBtn").addEventListener("click", async () => {
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (tab.url.includes("linkedin.com/mynetwork/invite-connect/connections/")) {
+    document.getElementById("status").innerText = "Syncing Connections...";
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["sync.js"],
+    });
+  } else {
+    document.getElementById("status").innerText =
+      "Error: Navigate to your Connections page first.";
+    document.getElementById("status").style.color = "red";
+  }
+});
