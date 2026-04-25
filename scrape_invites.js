@@ -1,4 +1,6 @@
 async function scrapeSentInvites() {
+  const inviteOwner = window.SAGE_INVITE_OWNER || "yash";
+
   console.log("Scraping Sent Invitations...");
 
   // Scroll down to load the full list of recent invites
@@ -46,6 +48,7 @@ async function scrapeSentInvites() {
       action: "saveData",
       data: {
         type: "manual_invite",
+        sentBy: inviteOwner,
         name: data.name,
         title: data.title,
         profileUrl: url,
@@ -55,7 +58,7 @@ async function scrapeSentInvites() {
   });
 
   alert(
-    `Scraping complete! Extracted ${count} profiles from the page and sent them to your Google Sheet.`,
+    `Scraping complete! Extracted ${count} profiles for ${inviteOwner} and sent them to your Google Sheet.`,
   );
 }
 

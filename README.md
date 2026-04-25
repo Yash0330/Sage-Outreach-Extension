@@ -29,7 +29,7 @@ A locally hosted, semi-autonomous Chrome Extension designed to bypass LinkedIn S
 3. Add the following headers to Row 1 of the **Companies** tab:
 
    ```
-   Company Name | Company URL | Status
+   Company Name | Company URL | Status | Timestamp
    ```
 
 4. Add the following headers to Row 1 of the **Outreach** tab:

@@ -87,11 +87,19 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 document
   .getElementById("scrapeInvitesBtn")
   .addEventListener("click", async () => {
+    let inviteOwner = document.getElementById("inviteOwner").value;
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (tab.url.includes("linkedin.com/mynetwork/invitation-manager/sent")) {
       document.getElementById("status").innerText =
-        "Scraping Sent Invitations...";
+        `Scraping Sent Invitations for ${inviteOwner}...`;
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (owner) => {
+          window.SAGE_INVITE_OWNER = owner;
+        },
+        args: [inviteOwner],
+      });
       chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ["scrape_invites.js"],

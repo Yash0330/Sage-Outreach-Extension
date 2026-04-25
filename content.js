@@ -41,6 +41,7 @@
             type: "company",
             companyName: companyName,
             companyUrl: companyUrl,
+            timestamp: new Date().toISOString(),
           },
         });
         totalScraped++;

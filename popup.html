@@ -82,6 +82,11 @@
         width: 50px;
         padding: 3px;
       }
+      select {
+        width: 100%;
+        padding: 5px;
+        margin-top: 4px;
+      }
       hr {
         border: 0;
         height: 1px;
@@ -111,6 +116,13 @@
 
     <hr />
 
+    <div class="input-group">
+      <label for="inviteOwner">Sent invites account:</label>
+      <select id="inviteOwner">
+        <option value="yash">Yash</option>
+        <option value="ruhal">Ruhal</option>
+      </select>
+    </div>
     <button id="scrapeInvitesBtn" class="btn-sync">
       4. Scrape Sent Invites
     </button>
